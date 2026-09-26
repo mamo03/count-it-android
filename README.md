@@ -59,6 +59,13 @@ Every push to `main` runs `.github/workflows/android-build.yml`, which builds a 
 attaches it to a new GitHub Release. Grab `app-debug.apk` from the repo's **Releases** page,
 or from the workflow run's **Artifacts** under the **Actions** tab.
 
+## Testing a change before an APK is built
+
+New work goes to the `dev` branch first. Pushes to `dev` do **not** build an APK. The game
+page is published as a web preview to play on a phone or computer (it reads the numbers aloud
+with the browser's own voice). Once the change is approved, `dev` is merged into `main`, and
+that push builds the APK and the new Release.
+
 ## Installing on a phone
 
 1. Download `app-debug.apk` onto the phone.
