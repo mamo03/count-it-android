@@ -24,6 +24,26 @@ Every round is generated fresh, so a level never runs out:
 The five wrong choices are believable near-misses (one off, the last number again, one jump
 too far, the "wrong rule" continuation) so the child has to look at the pattern, not guess.
 
+### 🧮 Basic Math
+
+A sum is shown as `7 + 6 = ?` and read aloud ("What is 7 plus 6?"); the child taps the answer
+from six choices. After two misses a hint appears under the sum:
+
+- small plus and minus: dots to count, in rows of five (taken-away dots are crossed out);
+- bigger plus and minus: a worked step through the tens (`56 − 30 = 26 → 26 − 8`) or counting
+  on/back (`49 → 39 → 29 → ?`);
+- times: repeated adding (`8 + 8 + 8 + 8`);
+- division: the times-table question it comes from (`7 × ? = 63`).
+
+| Level  | What comes up |
+|--------|---------------|
+| Easy   | Plus and minus up to 20 (mostly within 10) |
+| Medium | Plus and minus up to 100, and the 2, 3, 4, 5 and 10 times tables |
+| Hard   | Plus and minus up to 200, all times tables 2–10, and division (always exact) |
+
+Wrong choices are the usual slips: one or two off, ten off, the other operation (adding instead
+of subtracting), one row off in a times table, or the divisor itself.
+
 ## How it's built
 
 - `app/src/main/assets/www/index.html` — the whole game (HTML/CSS/JS). New games get an

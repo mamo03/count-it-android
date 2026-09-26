@@ -106,6 +106,20 @@
     white-space:nowrap; opacity:0; transition:opacity .3s ease;
   }
   .seq-row.hint .seq-step{ opacity:1; }
+  /* Basic Math: the + − × ÷ and = signs between the boxes. */
+  .seq-op{ flex:0 0 auto; align-self:flex-start; height:56px; display:flex; align-items:center; font-family:'Baloo 2', sans-serif; font-weight:800; font-size:28px; color:var(--violet); }
+  .seq-row.math{ gap:6px; }
+  /* Basic Math's hint, shown after two misses: dots to count for small sums,
+     a worked step for bigger ones. */
+  .calc-hint{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:17px; color:var(--violet); text-align:center; margin-top:-14px; line-height:1.3; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px 8px; max-width:100%; }
+  /* Dots sit in rows of five (like a ten-frame) so they're quick to count. */
+  .dot-group{ display:inline-grid; gap:4px; }
+  .dot{ width:13px; height:13px; border-radius:50%; display:inline-block; }
+  .dot-a{ background:var(--coral); }
+  .dot-b{ background:var(--sky-deep); }
+  .dot-gone{ background:#fff; border:2px solid #C9D3DC; position:relative; }
+  .dot-gone::after{ content:''; position:absolute; left:-3px; right:-3px; top:50%; height:2px; background:#8B99A6; transform:rotate(-45deg); }
+  .dot-op{ font-size:20px; }
 
   /* Answer choices — a 3x2 grid so all 6 numbers are visible at once. */
   .pick-options{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; width:100%; max-width:330px; }
@@ -172,6 +186,7 @@
 
       <div id="sequenceArea" style="width:100%; display:flex; flex-direction:column; align-items:center; gap:12px;">
         <div class="seq-row" id="seqRow"></div>
+        <div class="calc-hint hidden" id="hintLine"></div>
         <div class="pick-options" id="seqOptions"></div>
       </div>
 
@@ -212,6 +227,8 @@
       next: 'Next →',
       soundUnavailable: '🔇 Sound unavailable',
       whatNext: 'What comes next?',
+      mathAsk: 'What is {q}?',
+      opWords: { '+':'plus', '−':'minus', '×':'times', '÷':'divided by' },
       wellDone: '! Well done.',
       celebrate: ['Great job! 🎉', 'You did it! ⭐', 'Super counter! 🌟', 'Awesome! 🎈']
     },
@@ -227,6 +244,8 @@
       next: 'Næste →',
       soundUnavailable: '🔇 Lyd ikke tilgængelig',
       whatNext: 'Hvad kommer så?',
+      mathAsk: 'Hvad er {q}?',
+      opWords: { '+':'plus', '−':'minus', '×':'gange', '÷':'delt med' },
       wellDone: '! Flot klaret.',
       celebrate: ['Flot klaret! 🎉', 'Du gjorde det! ⭐', 'Super tæller! 🌟', 'Fantastisk! 🎈']
     },
@@ -242,40 +261,52 @@
       next: 'Suivant →',
       soundUnavailable: '🔇 Son indisponible',
       whatNext: 'Quel nombre vient ensuite ?',
+      mathAsk: 'Combien font {q} ?',
+      opWords: { '+':'plus', '−':'moins', '×':'fois', '÷':'divisé par' },
       wellDone: ' ! Bravo.',
       celebrate: ['Bravo ! 🎉', 'Tu as réussi ! ⭐', 'Super compteur ! 🌟', 'Génial ! 🎈']
     }
   };
 
-  // The games list. Only Number Sequence for now; new games get their own entry
-  // here (and their own area on the game screen), the same way Spell It! grew.
+  // The games list. Each game has its own puzzle maker in PUZZLES below; they all
+  // share the same game screen (a row of boxes ending in "?" plus six answers).
   var GAMES_BY_LANG = {
-    en: [ { id:'sequence', name:'Number Sequence', emoji:'🔢', tagline:'Look at the numbers, then pick the one that comes next' } ],
-    da: [ { id:'sequence', name:'Talrækker', emoji:'🔢', tagline:'Se på tallene, og vælg så det tal, der kommer bagefter' } ],
-    fr: [ { id:'sequence', name:'Suites de nombres', emoji:'🔢', tagline:'Regarde les nombres, puis choisis celui qui vient ensuite' } ]
+    en: [
+      { id:'sequence', name:'Number Sequence', emoji:'🔢', tagline:'Look at the numbers, then pick the one that comes next' },
+      { id:'math', name:'Basic Math', emoji:'🧮', tagline:'Work out the sum, then tap the right answer' }
+    ],
+    da: [
+      { id:'sequence', name:'Talrækker', emoji:'🔢', tagline:'Se på tallene, og vælg så det tal, der kommer bagefter' },
+      { id:'math', name:'Regnestykker', emoji:'🧮', tagline:'Regn stykket ud, og tryk på det rigtige svar' }
+    ],
+    fr: [
+      { id:'sequence', name:'Suites de nombres', emoji:'🔢', tagline:'Regarde les nombres, puis choisis celui qui vient ensuite' },
+      { id:'math', name:'Calcul', emoji:'🧮', tagline:'Fais le calcul, puis touche la bonne réponse' }
+    ]
   };
 
   var LEVEL_TAGLINE_VERB_BY_LANG = {
-    en: { sequence:'counting' },
-    da: { sequence:'tælle' },
-    fr: { sequence:'compter' }
+    en: { sequence:'counting', math:'calculating' },
+    da: { sequence:'tælle', math:'regne' },
+    fr: { sequence:'compter', math:'calculer' }
   };
 
+  // Levels are shared by every game; only the one-line description differs.
   var LEVELS_BY_LANG = {
     en: [
-      { id:'easy', name:'Easy', emoji:'🌱', sub:'Count by 1s and 2s, up to 20' },
-      { id:'medium', name:'Medium', emoji:'🌿', sub:'Jumps of 2, 3, 5 and 10, up to 100' },
-      { id:'hard', name:'Hard', emoji:'🌳', sub:'Bigger jumps and tricky patterns' }
+      { id:'easy', name:'Easy', emoji:'🌱', subs:{ sequence:'Count by 1s and 2s, up to 20', math:'Plus and minus, up to 20' } },
+      { id:'medium', name:'Medium', emoji:'🌿', subs:{ sequence:'Jumps of 2, 3, 5 and 10, up to 100', math:'Plus and minus up to 100, and times tables' } },
+      { id:'hard', name:'Hard', emoji:'🌳', subs:{ sequence:'Bigger jumps and tricky patterns', math:'Bigger numbers and all four: + − × ÷' } }
     ],
     da: [
-      { id:'easy', name:'Nem', emoji:'🌱', sub:'Tæl med 1 og 2, op til 20' },
-      { id:'medium', name:'Mellem', emoji:'🌿', sub:'Spring på 2, 3, 5 og 10, op til 100' },
-      { id:'hard', name:'Svær', emoji:'🌳', sub:'Større spring og snedige mønstre' }
+      { id:'easy', name:'Nem', emoji:'🌱', subs:{ sequence:'Tæl med 1 og 2, op til 20', math:'Plus og minus, op til 20' } },
+      { id:'medium', name:'Mellem', emoji:'🌿', subs:{ sequence:'Spring på 2, 3, 5 og 10, op til 100', math:'Plus og minus op til 100, og gangetabeller' } },
+      { id:'hard', name:'Svær', emoji:'🌳', subs:{ sequence:'Større spring og snedige mønstre', math:'Større tal og alle fire: + − × ÷' } }
     ],
     fr: [
-      { id:'easy', name:'Facile', emoji:'🌱', sub:'Compte de 1 en 1 et de 2 en 2, jusqu’à 20' },
-      { id:'medium', name:'Moyen', emoji:'🌿', sub:'Sauts de 2, 3, 5 et 10, jusqu’à 100' },
-      { id:'hard', name:'Difficile', emoji:'🌳', sub:'Grands sauts et suites plus rusées' }
+      { id:'easy', name:'Facile', emoji:'🌱', subs:{ sequence:'Compte de 1 en 1 et de 2 en 2, jusqu’à 20', math:'Additions et soustractions jusqu’à 20' } },
+      { id:'medium', name:'Moyen', emoji:'🌿', subs:{ sequence:'Sauts de 2, 3, 5 et 10, jusqu’à 100', math:'Additions et soustractions jusqu’à 100, et tables de multiplication' } },
+      { id:'hard', name:'Difficile', emoji:'🌳', subs:{ sequence:'Grands sauts et suites plus rusées', math:'Plus grands nombres et les quatre opérations : + − × ÷' } }
     ]
   };
 
@@ -320,7 +351,7 @@
     return { shown:terms.slice(0, SEQ_SHOWN), answer:terms[SEQ_SHOWN], steps:labels, alt:last + (SEQ_SHOWN - 1), jump:SEQ_SHOWN };
   }
 
-  var GENERATORS = {
+  var SEQUENCE_GENERATORS = {
     // Up to 20: counting on by 1s (most often), by 2s, and counting back by 1s.
     easy: function(){
       var r = Math.random();
@@ -356,30 +387,168 @@
     }
   };
 
-  // Six choices: the answer plus five believable near-misses — one off, the last
-  // number again, one jump too far, the puzzle's own "tempting" wrong rule — then
-  // topped up with random numbers close by if those ever collide.
-  function buildOptions(q){
-    var a = q.answer, last = q.shown[SEQ_SHOWN - 1], d = q.jump;
-    var cands = [a + 1, a - 1, last, a + d, q.alt, a + 2, a - 2];
-    if(d >= 5){ cands.push(a + 10, a - 10); }
+  // Six choices: the answer plus five believable near-misses (each game supplies
+  // its own list of likely slips), topped up with random numbers close to the
+  // answer if the slips ever collide or go below zero.
+  function buildOptions(answer, slips, spread){
     var picked = [];
-    shuffle(cands).forEach(function(n){
-      if(picked.length < OPTION_COUNT - 1 && n >= 0 && n !== a && picked.indexOf(n) === -1) picked.push(n);
+    shuffle(slips).forEach(function(n){
+      if(picked.length < OPTION_COUNT - 1 && n >= 0 && n !== answer && picked.indexOf(n) === -1) picked.push(n);
     });
-    var spread = Math.max(6, d * 2), guard = 0;
+    var guard = 0;
     while(picked.length < OPTION_COUNT - 1 && guard++ < 200){
-      var n = randInt(Math.max(0, a - spread), a + spread);
-      if(n !== a && picked.indexOf(n) === -1) picked.push(n);
+      var n = randInt(Math.max(0, answer - spread), answer + spread);
+      if(n !== answer && picked.indexOf(n) === -1) picked.push(n);
     }
-    return shuffle(picked.concat([a]));
+    return shuffle(picked.concat([answer]));
   }
 
-  function newPuzzle(levelId, previous){
+  // ---------- Basic Math generation ----------
+  // A sum is { a, op, b, answer }. Easy: + and − up to 20 (mostly within 10).
+  // Medium: + and − up to 100, plus the 2, 3, 4, 5 and 10 times tables.
+  // Hard: + and − up to 200, every times table from 2 to 10, and division
+  // (always exact — the matching times-table fact run backwards).
+  function sum(a, op, b){
+    var answer = op === '+' ? a + b : op === '−' ? a - b : op === '×' ? a * b : a / b;
+    return { a:a, op:op, b:b, answer:answer };
+  }
+
+  function addWithin(max, minB){
+    var a = randInt(1, max - minB), b = randInt(minB, max - a);
+    return sum(a, '+', b);
+  }
+
+  function subtractWithin(max, minA, maxB){
+    var a = randInt(minA, max), b = randInt(1, Math.min(maxB, a));
+    return sum(a, '−', b);
+  }
+
+  function timesTable(tables, low){
+    var t = choice(tables), n = randInt(low, 10);
+    return Math.random() < 0.5 ? sum(t, '×', n) : sum(n, '×', t);
+  }
+
+  var MATH_GENERATORS = {
+    easy: function(){
+      // 60% stay within 10; the rest go up to 20 (never taking away more than 10).
+      var small = Math.random() < 0.6;
+      if(Math.random() < 0.5){
+        if(small) return addWithin(10, 1);
+        var a = randInt(5, 12);
+        return sum(a, '+', randInt(2, Math.min(10, 20 - a)));
+      }
+      return small ? subtractWithin(10, 2, 10) : subtractWithin(20, 11, 10);
+    },
+    medium: function(){
+      var r = Math.random();
+      if(r < 0.35){ var a = randInt(10, 89); return sum(a, '+', randInt(2, Math.min(60, 100 - a))); }
+      if(r < 0.70){ var c = randInt(20, 99); return sum(c, '−', randInt(2, c - 1)); }
+      return timesTable([2, 3, 4, 5, 10], 1);
+    },
+    hard: function(){
+      var r = Math.random();
+      if(r < 0.25){ var a = randInt(25, 150); return sum(a, '+', randInt(11, 200 - a)); }
+      if(r < 0.50){ var c = randInt(60, 200); return sum(c, '−', randInt(11, c - 5)); }
+      if(r < 0.75) return timesTable([2, 3, 4, 5, 6, 7, 8, 9, 10], 2);
+      var d = randInt(2, 10), q = randInt(1, 10);
+      return sum(d * q, '÷', d);
+    }
+  };
+
+  // The slips children most often make with each kind of sum.
+  function mathSlips(m){
+    var x = m.answer, a = m.a, b = m.b;
+    var slips = [x + 1, x - 1, x + 2, x - 2];
+    if(x >= 10) slips.push(x + 10, x - 10);
+    if(m.op === '+') slips.push(Math.abs(a - b));          // subtracted instead
+    if(m.op === '−') slips.push(a + b);                    // added instead
+    if(m.op === '×') slips.push(x + a, x - a, x + b, x - b, a + b); // one row off, or added
+    if(m.op === '÷') slips.push(b, x + 3);                 // the divisor itself
+    return slips;
+  }
+
+  // A worked nudge shown under the sum after two misses — numbers and symbols
+  // only, so it reads the same in every language. Small + and − get dots to
+  // count; bigger ones are split through a ten; × becomes repeated adding; ÷
+  // becomes the times-table question it comes from.
+  function mathHint(m){
+    var a = m.a, b = m.b;
+    if((m.op === '+' || m.op === '−') && a <= 20 && b <= 20 && (m.op === '−' || a + b <= 20)){
+      return { dots:true };
+    }
+    if(m.op === '+' || m.op === '−'){
+      var sign = m.op === '+' ? 1 : -1;
+      var tens = b - b % 10, ones = b % 10;
+      if(tens && ones){
+        var mid = a + sign * tens;
+        return { text: a + ' ' + m.op + ' ' + tens + ' = ' + mid + '  →  ' + mid + ' ' + m.op + ' ' + ones };
+      }
+      if(!tens){
+        // Bridge through the next (or previous) ten: 47 + 5 → 47 + 3 = 50 → 50 + 2
+        var toTen = sign > 0 ? (10 - a % 10) % 10 : a % 10;
+        if(toTen && toTen < ones){
+          var ten = a + sign * toTen;
+          return { text: a + ' ' + m.op + ' ' + toTen + ' = ' + ten + '  →  ' + ten + ' ' + m.op + ' ' + (ones - toTen) };
+        }
+        var chain = [a]; for(var i = 1; i < ones; i++) chain.push(a + sign * i);
+        return { text: chain.join(' → ') + ' → ?' };
+      }
+      // A whole number of tens: count on (or back) in tens.
+      var hops = tens / 10, steps = [a];
+      for(var j = 1; j < hops; j++) steps.push(a + sign * 10 * j);
+      return hops <= 6 ? { text: steps.join(' → ') + ' → ?' } : null;
+    }
+    if(m.op === '×'){
+      var times = Math.min(a, b), each = Math.max(a, b), parts = [];
+      if(times < 2) return null;
+      for(var k = 0; k < times; k++) parts.push(each);
+      return { text: parts.join(' + ') };
+    }
+    return { text: b + ' × ? = ' + a };
+  }
+
+  // ---------- Puzzles, one maker per game ----------
+  // Every game hands the shared game screen the same shape:
+  // { cells:[{kind:'num'|'op'|'missing', text, step?}], answer, options,
+  //   key (to avoid repeating the last round), say() (what's read aloud), hint }.
+  var PUZZLES = {
+    sequence: function(levelId){
+      var q = SEQUENCE_GENERATORS[levelId]();
+      var cells = q.shown.map(function(n, i){ return { kind:'num', text:String(n), step: i > 0 ? q.steps[i - 1] : null }; });
+      cells.push({ kind:'missing', text:'?' });
+      var d = q.jump;
+      var slips = [q.answer + 1, q.answer - 1, q.shown[SEQ_SHOWN - 1], q.answer + d, q.alt, q.answer + 2, q.answer - 2];
+      if(d >= 5) slips.push(q.answer + 10, q.answer - 10);
+      return {
+        cells:cells, answer:q.answer, key:q.shown.join(','),
+        options:buildOptions(q.answer, slips, Math.max(6, d * 2)),
+        say:function(){ return q.shown.join(', ') + '. ' + STRINGS[lang].whatNext; },
+        hint:{ steps:true }
+      };
+    },
+    math: function(levelId){
+      var m = MATH_GENERATORS[levelId]();
+      return {
+        cells:[
+          { kind:'num', text:String(m.a) }, { kind:'op', text:m.op },
+          { kind:'num', text:String(m.b) }, { kind:'op', text:'=' },
+          { kind:'missing', text:'?' }
+        ],
+        answer:m.answer, key:m.a + m.op + m.b, math:m,
+        options:buildOptions(m.answer, mathSlips(m), Math.max(5, Math.ceil(m.answer * 0.2))),
+        say:function(){
+          var strs = STRINGS[lang];
+          return strs.mathAsk.replace('{q}', m.a + ' ' + strs.opWords[m.op] + ' ' + m.b);
+        },
+        hint:mathHint(m)
+      };
+    }
+  };
+
+  function newPuzzle(gameId, levelId, previous){
     var q, guard = 0;
-    do { q = GENERATORS[levelId](); }
-    while(previous && guard++ < 20 && q.shown.join(',') === previous.shown.join(','));
-    q.options = buildOptions(q);
+    do { q = PUZZLES[gameId](levelId); }
+    while(previous && guard++ < 20 && q.key === previous.key);
     return q;
   }
 
@@ -434,7 +603,7 @@
 
   function speakPuzzle(){
     if(!puzzle) return;
-    speak(puzzle.shown.join(', ') + '. ' + STRINGS[lang].whatNext);
+    speak(puzzle.say());
   }
 
   function shuffle(arr){
@@ -460,6 +629,7 @@
   var pictureFrame = document.getElementById('pictureFrame');
   var seqRowEl = document.getElementById('seqRow');
   var seqOptionsEl = document.getElementById('seqOptions');
+  var hintLineEl = document.getElementById('hintLine');
   var celebrateEl = document.getElementById('celebrate');
   var nextBtn = document.getElementById('nextBtn');
   var backBtn = document.getElementById('backBtn');
@@ -528,7 +698,7 @@
         '<div class="level-emoji">' + lv.emoji + '</div>' +
         '<div class="level-info">' +
           '<div class="level-name">' + lv.name + '</div>' +
-          '<div class="level-sub">' + lv.sub + '</div>' +
+          '<div class="level-sub">' + lv.subs[currentGame.id] + '</div>' +
         '</div>';
       btn.addEventListener('click', function(){ startLevel(lv); });
       levelListEl.appendChild(btn);
@@ -557,9 +727,9 @@
     renderGames();
   }
 
-  // ---------- Number Sequence round ----------
+  // ---------- A round (shared by every game) ----------
   function loadRound(){
-    puzzle = newPuzzle(currentLevel.id, puzzle);
+    puzzle = newPuzzle(currentGame.id, currentLevel.id, puzzle);
     misses = 0;
     solved = false;
     celebrateEl.textContent = '';
@@ -572,35 +742,77 @@
     void pictureFrame.offsetWidth;
     pictureFrame.classList.add('bump');
 
-    renderSequence(puzzle);
+    renderRow(puzzle);
+    renderHintLine(puzzle);
     renderOptions(puzzle);
     speakPuzzle();
   }
 
-  function renderSequence(q){
+  function renderRow(q){
     seqRowEl.innerHTML = '';
     seqRowEl.classList.remove('hint');
-    var longest = Math.max.apply(null, q.shown.concat([q.answer]).map(function(n){ return String(n).length; }));
+    var longest = Math.max.apply(null, q.cells.map(function(c){ return c.text.length; }).concat([String(q.answer).length]));
     seqRowEl.classList.toggle('long', longest >= 3);
+    seqRowEl.classList.toggle('math', q.cells.some(function(c){ return c.kind === 'op'; }));
 
-    var cells = q.shown.concat(['?']);
-    cells.forEach(function(val, i){
+    q.cells.forEach(function(c){
       var cell = document.createElement('div');
+      if(c.kind === 'op'){
+        cell.className = 'seq-op';
+        cell.textContent = c.text;
+        seqRowEl.appendChild(cell);
+        return;
+      }
       cell.className = 'seq-cell';
       var box = document.createElement('div');
-      box.className = 'seq-num' + (val === '?' ? ' missing' : '');
-      box.textContent = val;
+      box.className = 'seq-num' + (c.kind === 'missing' ? ' missing' : '');
+      box.textContent = c.text;
       cell.appendChild(box);
-      // The hint under the last gap would give the answer away on its own, so
-      // it only ever labels the gaps between numbers the child can already see.
-      if(i > 0 && i < cells.length - 1){
+      // Number Sequence's step hints sit under the gap before each number. The
+      // gap into the "?" never gets one — on its own it would give the answer away.
+      if(c.step){
         var step = document.createElement('div');
         step.className = 'seq-step';
-        step.textContent = q.steps[i - 1];
+        step.textContent = c.step;
         cell.appendChild(step);
       }
       seqRowEl.appendChild(cell);
     });
+  }
+
+  // Basic Math's hint line, filled in now but kept hidden until two misses.
+  function renderHintLine(q){
+    hintLineEl.innerHTML = '';
+    hintLineEl.classList.add('hidden');
+    var h = q.hint;
+    if(!h || h.steps) return;
+    if(h.dots){
+      var m = q.math;
+      var addDots = function(n, cls){
+        var group = document.createElement('span');
+        group.className = 'dot-group';
+        group.style.gridTemplateColumns = 'repeat(' + Math.min(Math.max(n, 1), 5) + ', 13px)';
+        for(var i = 0; i < n; i++){
+          var d = document.createElement('span');
+          d.className = 'dot ' + cls(i);
+          group.appendChild(d);
+        }
+        hintLineEl.appendChild(group);
+      };
+      if(m.op === '+'){
+        addDots(m.a, function(){ return 'dot-a'; });
+        var plus = document.createElement('span');
+        plus.className = 'dot-op';
+        plus.textContent = '+';
+        hintLineEl.appendChild(plus);
+        addDots(m.b, function(){ return 'dot-b'; });
+      } else {
+        // Take-away: the last b dots are shown crossed out.
+        addDots(m.a, function(i){ return i >= m.a - m.b ? 'dot-gone' : 'dot-a'; });
+      }
+    } else {
+      hintLineEl.textContent = h.text;
+    }
   }
 
   function renderOptions(q){
@@ -636,7 +848,10 @@
       void btn.offsetWidth;
       btn.classList.add('shake');
       misses++;
-      if(misses >= MISSES_BEFORE_HINT) seqRowEl.classList.add('hint');
+      if(misses >= MISSES_BEFORE_HINT){
+        seqRowEl.classList.add('hint');
+        if(hintLineEl.childNodes.length) hintLineEl.classList.remove('hidden');
+      }
     }
   }
 
@@ -681,7 +896,7 @@
   langSelectEl.addEventListener('change', function(){ setLang(this.value); });
 
   // Exposed only so the generator can be exercised from tests; not used by the page.
-  window.__countIt = { newPuzzle:newPuzzle };
+  window.__countIt = { newPuzzle:newPuzzle, PUZZLES:PUZZLES };
 
   applyLangStrings();
 })();
