@@ -94,6 +94,8 @@
   .seq-row.long .seq-num{ font-size:20px; }
   .seq-num.pop{ animation:bump .45s ease; }
   .seq-num.missing{ border:3px dashed var(--coral); background:#FFF1EF; color:var(--coral); }
+  .seq-num.variable{ font-style:italic; font-family:Georgia, 'Times New Roman', serif; font-weight:700; }
+  .seq-num.variable.filled{ font-style:normal; font-family:'Baloo 2', sans-serif; font-weight:800; }
   .seq-num.missing.filled{ border:3px solid var(--leaf); background:#E7FBF4; color:var(--ink); }
   /* The step between a number and the one before it, e.g. "+2". Hidden until the
      child has had a couple of misses, then shown as a gentle hint, centered under
@@ -107,6 +109,9 @@
   /* Basic Math: the + − × ÷ and = signs between the boxes. */
   .seq-op{ flex:0 0 auto; align-self:flex-start; height:56px; display:flex; align-items:center; font-family:'Baloo 2', sans-serif; font-weight:800; font-size:28px; color:var(--violet); }
   .seq-row.math{ gap:6px; }
+  .seq-row.wide{ gap:4px; }
+  .seq-row.wide .seq-num{ height:48px; font-size:21px; border-radius:12px; }
+  .seq-row.wide .seq-op{ height:48px; font-size:22px; }
   /* Basic Math's hint, shown after two misses: dots to count for small sums,
      a worked step for bigger ones. */
   .calc-hint{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:17px; color:var(--violet); text-align:center; margin-top:-14px; line-height:1.3; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px 8px; max-width:100%; }
@@ -226,6 +231,8 @@
       whatNext: 'What comes next?',
       mathAsk: 'What is {q}?',
       opWords: { '+':'plus', '−':'minus', '×':'times', '÷':'divided by' },
+      equalsWord: 'equals',
+      algebraAsk: 'What is x?',
       wellDone: '! Well done.',
       celebrate: ['Great job! 🎉', 'You did it! ⭐', 'Super counter! 🌟', 'Awesome! 🎈']
     },
@@ -243,6 +250,8 @@
       whatNext: 'Hvad kommer så?',
       mathAsk: 'Hvad er {q}?',
       opWords: { '+':'plus', '−':'minus', '×':'gange', '÷':'delt med' },
+      equalsWord: 'er',
+      algebraAsk: 'Hvad er x?',
       wellDone: '! Flot klaret.',
       celebrate: ['Flot klaret! 🎉', 'Du gjorde det! ⭐', 'Super tæller! 🌟', 'Fantastisk! 🎈']
     },
@@ -260,6 +269,8 @@
       whatNext: 'Quel nombre vient ensuite ?',
       mathAsk: 'Combien font {q} ?',
       opWords: { '+':'plus', '−':'moins', '×':'fois', '÷':'divisé par' },
+      equalsWord: 'égale',
+      algebraAsk: 'Combien vaut x ?',
       wellDone: ' ! Bravo.',
       celebrate: ['Bravo ! 🎉', 'Tu as réussi ! ⭐', 'Super compteur ! 🌟', 'Génial ! 🎈']
     }
@@ -270,40 +281,43 @@
   var GAMES_BY_LANG = {
     en: [
       { id:'sequence', name:'Number Sequence', emoji:'🔢', tagline:'Look at the numbers, then pick the one that comes next' },
-      { id:'math', name:'Basic Math', emoji:'🧮', tagline:'Work out the sum, then tap the right answer' }
+      { id:'math', name:'Basic Math', emoji:'🧮', tagline:'Work out the sum, then tap the right answer' },
+      { id:'algebra', name:'Basic Algebra', emoji:'🧩', tagline:'Find the number hiding behind x' }
     ],
     da: [
       { id:'sequence', name:'Talrækker', emoji:'🔢', tagline:'Se på tallene, og vælg så det tal, der kommer bagefter' },
-      { id:'math', name:'Regnestykker', emoji:'🧮', tagline:'Regn stykket ud, og tryk på det rigtige svar' }
+      { id:'math', name:'Regnestykker', emoji:'🧮', tagline:'Regn stykket ud, og tryk på det rigtige svar' },
+      { id:'algebra', name:'Enkel algebra', emoji:'🧩', tagline:'Find tallet, der gemmer sig bag x' }
     ],
     fr: [
       { id:'sequence', name:'Suites de nombres', emoji:'🔢', tagline:'Regarde les nombres, puis choisis celui qui vient ensuite' },
-      { id:'math', name:'Calcul', emoji:'🧮', tagline:'Fais le calcul, puis touche la bonne réponse' }
+      { id:'math', name:'Calcul', emoji:'🧮', tagline:'Fais le calcul, puis touche la bonne réponse' },
+      { id:'algebra', name:'Algèbre facile', emoji:'🧩', tagline:'Trouve le nombre caché derrière x' }
     ]
   };
 
   var LEVEL_TAGLINE_VERB_BY_LANG = {
-    en: { sequence:'counting', math:'calculating' },
-    da: { sequence:'tælle', math:'regne' },
-    fr: { sequence:'compter', math:'calculer' }
+    en: { sequence:'counting', math:'calculating', algebra:'solving' },
+    da: { sequence:'tælle', math:'regne', algebra:'løse' },
+    fr: { sequence:'compter', math:'calculer', algebra:'résoudre' }
   };
 
   // Levels are shared by every game; only the one-line description differs.
   var LEVELS_BY_LANG = {
     en: [
-      { id:'easy', name:'Easy', emoji:'🌱', subs:{ sequence:'Count by 1s and 2s, up to 20', math:'Plus and minus, up to 20' } },
-      { id:'medium', name:'Medium', emoji:'🌿', subs:{ sequence:'Jumps of 2, 3, 5 and 10, up to 100', math:'Plus and minus up to 100, and times tables' } },
-      { id:'hard', name:'Hard', emoji:'🌳', subs:{ sequence:'Bigger jumps and tricky patterns', math:'Bigger numbers and all four: + − × ÷' } }
+      { id:'easy', name:'Easy', emoji:'🌱', subs:{ sequence:'Count by 1s and 2s, up to 20', math:'Plus and minus, up to 20', algebra:'Find x with plus and minus, up to 20' } },
+      { id:'medium', name:'Medium', emoji:'🌿', subs:{ sequence:'Jumps of 2, 3, 5 and 10, up to 100', math:'Plus and minus up to 100, and times tables', algebra:'Plus and minus up to 100, and times' } },
+      { id:'hard', name:'Hard', emoji:'🌳', subs:{ sequence:'Bigger jumps and tricky patterns', math:'Bigger numbers and all four: + − × ÷', algebra:'Division, and two steps like 2 × x + 3 = 11' } }
     ],
     da: [
-      { id:'easy', name:'Nem', emoji:'🌱', subs:{ sequence:'Tæl med 1 og 2, op til 20', math:'Plus og minus, op til 20' } },
-      { id:'medium', name:'Mellem', emoji:'🌿', subs:{ sequence:'Spring på 2, 3, 5 og 10, op til 100', math:'Plus og minus op til 100, og gangetabeller' } },
-      { id:'hard', name:'Svær', emoji:'🌳', subs:{ sequence:'Større spring og snedige mønstre', math:'Større tal og alle fire: + − × ÷' } }
+      { id:'easy', name:'Nem', emoji:'🌱', subs:{ sequence:'Tæl med 1 og 2, op til 20', math:'Plus og minus, op til 20', algebra:'Find x med plus og minus, op til 20' } },
+      { id:'medium', name:'Mellem', emoji:'🌿', subs:{ sequence:'Spring på 2, 3, 5 og 10, op til 100', math:'Plus og minus op til 100, og gangetabeller', algebra:'Plus og minus op til 100, og gange' } },
+      { id:'hard', name:'Svær', emoji:'🌳', subs:{ sequence:'Større spring og snedige mønstre', math:'Større tal og alle fire: + − × ÷', algebra:'Division og to trin som 2 × x + 3 = 11' } }
     ],
     fr: [
-      { id:'easy', name:'Facile', emoji:'🌱', subs:{ sequence:'Compte de 1 en 1 et de 2 en 2, jusqu’à 20', math:'Additions et soustractions jusqu’à 20' } },
-      { id:'medium', name:'Moyen', emoji:'🌿', subs:{ sequence:'Sauts de 2, 3, 5 et 10, jusqu’à 100', math:'Additions et soustractions jusqu’à 100, et tables de multiplication' } },
-      { id:'hard', name:'Difficile', emoji:'🌳', subs:{ sequence:'Grands sauts et suites plus rusées', math:'Plus grands nombres et les quatre opérations : + − × ÷' } }
+      { id:'easy', name:'Facile', emoji:'🌱', subs:{ sequence:'Compte de 1 en 1 et de 2 en 2, jusqu’à 20', math:'Additions et soustractions jusqu’à 20', algebra:'Trouve x : additions et soustractions jusqu’à 20' } },
+      { id:'medium', name:'Moyen', emoji:'🌿', subs:{ sequence:'Sauts de 2, 3, 5 et 10, jusqu’à 100', math:'Additions et soustractions jusqu’à 100, et tables de multiplication', algebra:'Additions et soustractions jusqu’à 100, et multiplications' } },
+      { id:'hard', name:'Difficile', emoji:'🌳', subs:{ sequence:'Grands sauts et suites plus rusées', math:'Plus grands nombres et les quatre opérations : + − × ÷', algebra:'Divisions et équations en deux étapes, comme 2 × x + 3 = 11' } }
     ]
   };
 
@@ -536,6 +550,103 @@
         },
         hint:mathHint(m)
       };
+    },
+    algebra: function(levelId){
+      var e = ALGEBRA_GENERATORS[levelId]();
+      var x = e.x;
+      var cells = e.tokens.map(function(t){
+        if(t === 'x') return { kind:'missing', text:'x', variable:true };
+        if(typeof t === 'number') return { kind:'num', text:String(t) };
+        return { kind:'op', text:t };
+      });
+      return {
+        cells:cells, answer:x, key:e.tokens.join(' '),
+        options:buildOptions(x, e.slips.concat([x + 1, x - 1, x + 2, x - 2]), Math.max(5, Math.ceil(x * 0.3))),
+        say:function(){
+          var strs = STRINGS[lang];
+          var words = e.tokens.map(function(t){
+            if(t === '=') return strs.equalsWord;
+            if(typeof t === 'number' || t === 'x') return String(t);
+            return strs.opWords[t];
+          });
+          return words.join(' ') + '. ' + strs.algebraAsk;
+        },
+        hint: e.hint ? { text:e.hint } : null
+      };
+    }
+  };
+
+  // ---------- Basic Algebra generation ----------
+  // An equation is a list of tokens with 'x' standing for the unknown, e.g.
+  // [3, '+', 'x', '=', 7]. Easy: + and − up to 20. Medium: + and − up to 100,
+  // and times (2, 3, 4, 5 and 10). Hard: every times table, division both ways
+  // (x ÷ 4 = 6 and 24 ÷ x = 6), and two-step equations (2 × x + 3 = 11).
+  // Every equation is built from x outwards, so x is always a whole number.
+  function equation(tokens, x, hint, slips){ return { tokens:tokens, x:x, hint:hint, slips:slips }; }
+
+  function eqAdd(x, a){
+    var c = x + a;
+    var tokens = Math.random() < 0.5 ? ['x', '+', a, '=', c] : [a, '+', 'x', '=', c];
+    return equation(tokens, x, c + ' − ' + a + ' = ?', [c, c + a, a]);
+  }
+  function eqSubFrom(x, a){          // x − a = c
+    var c = x - a;
+    return equation(['x', '−', a, '=', c], x, c + ' + ' + a + ' = ?', [c, a, Math.abs(c - a)]);
+  }
+  function eqTakeAway(a, x){         // a − x = c
+    var c = a - x;
+    return equation([a, '−', 'x', '=', c], x, a + ' − ' + c + ' = ?', [c, a + c, a]);
+  }
+  // Medium × hint: count up in a's to c — the number of jumps is x.
+  function eqTimes(a, x, hardHint){
+    var c = a * x;
+    var tokens = Math.random() < 0.5 ? [a, '×', 'x', '=', c] : ['x', '×', a, '=', c];
+    var hint;
+    if(hardHint || x < 2){ hint = x < 2 ? null : c + ' ÷ ' + a + ' = ?'; }
+    else { var jumps = []; for(var i = 1; i <= x; i++) jumps.push(a * i); hint = jumps.join(', '); }
+    return equation(tokens, x, hint, [c - a, a, x + a, x * 2]);
+  }
+  function eqDivided(x, a){          // x ÷ a = c
+    var c = x / a;
+    return equation(['x', '÷', a, '=', c], x, c + ' × ' + a + ' = ?', [c, a, c + a, x - a, x + a]);
+  }
+  function eqDividedBy(a, x){        // a ÷ x = c
+    var c = a / x;
+    return equation([a, '÷', 'x', '=', c], x, a + ' ÷ ' + c + ' = ?', [c, a - c, x * 2, c + 1]);
+  }
+  function eqTwoStep(a, x, b, plus){ // a × x ± b = c
+    var ax = a * x, c = plus ? ax + b : ax - b;
+    var undo = plus ? c + ' − ' + b : c + ' + ' + b;
+    var hint = a + ' × x = ' + undo + ' = ' + ax + '  →  ' + ax + ' ÷ ' + a + ' = ?';
+    var wrongUndo = plus ? c + b : Math.abs(c - b);
+    var slips = [ax, c, wrongUndo];
+    if(wrongUndo % a === 0) slips.push(wrongUndo / a);
+    return equation([a, '×', 'x', plus ? '+' : '−', b, '=', c], x, hint, slips);
+  }
+
+  var ALGEBRA_GENERATORS = {
+    easy: function(){
+      var r = Math.random();
+      if(r < 0.4) return eqAdd(randInt(1, 10), randInt(1, 10));
+      if(r < 0.7){ var b = randInt(1, 10); return eqSubFrom(randInt(0, 20 - b) + b, b); }
+      var a = randInt(5, 20);
+      return eqTakeAway(a, randInt(1, a - 1));
+    },
+    medium: function(){
+      var r = Math.random();
+      if(r < 0.3){ var x = randInt(5, 60); return eqAdd(x, randInt(5, Math.min(40, 100 - x))); }
+      if(r < 0.45){ var y = randInt(20, 99); return eqSubFrom(y, randInt(3, y - 1)); }
+      if(r < 0.6){ var a = randInt(20, 99); return eqTakeAway(a, randInt(2, a - 1)); }
+      return eqTimes(choice([2, 3, 4, 5, 10]), randInt(1, 10), false);
+    },
+    hard: function(){
+      var r = Math.random();
+      if(r < 0.2) return eqTimes(randInt(2, 10), randInt(2, 10), true);
+      if(r < 0.35){ var d = randInt(2, 10); return eqDivided(d * randInt(1, 10), d); }
+      if(r < 0.5){ var x = randInt(2, 10); return eqDividedBy(x * randInt(1, 10), x); }
+      var a2 = randInt(2, 5), x2 = randInt(1, 10);
+      if(r < 0.75) return eqTwoStep(a2, x2, randInt(1, 20), true);
+      return eqTwoStep(a2, x2, randInt(1, a2 * x2), false);
     }
   };
 
@@ -740,6 +851,7 @@
     var longest = Math.max.apply(null, q.cells.map(function(c){ return c.text.length; }).concat([String(q.answer).length]));
     seqRowEl.classList.toggle('long', longest >= 3);
     seqRowEl.classList.toggle('math', q.cells.some(function(c){ return c.kind === 'op'; }));
+    seqRowEl.classList.toggle('wide', q.cells.length > 5);
 
     q.cells.forEach(function(c){
       var cell = document.createElement('div');
@@ -751,7 +863,7 @@
       }
       cell.className = 'seq-cell';
       var box = document.createElement('div');
-      box.className = 'seq-num' + (c.kind === 'missing' ? ' missing' : '');
+      box.className = 'seq-num' + (c.kind === 'missing' ? ' missing' : '') + (c.variable ? ' variable' : '');
       box.textContent = c.text;
       cell.appendChild(box);
       // Number Sequence's step hints sit under the gap before each number. The

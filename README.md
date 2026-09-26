@@ -44,6 +44,21 @@ from six choices. After two misses a hint appears under the sum:
 Wrong choices are the usual slips: one or two off, ten off, the other operation (adding instead
 of subtracting), one row off in a times table, or the divisor itself.
 
+### 🧩 Basic Algebra
+
+An equation with an unknown **x** is shown, like `8 + x = 11`, and read aloud ("8 plus x
+equals 11. What is x?"). The child picks x from six choices, and the x box fills in with the
+answer. After two misses a hint shows how to undo the sum: `11 − 8 = ?`. For times in Medium,
+the hint counts up in jumps (`3, 6, 9, 12, 15, 18, 21, 24`), and the number of jumps is x.
+
+| Level  | What comes up |
+|--------|---------------|
+| Easy   | `x + 6 = 15`, `5 + x = 9`, `x − 7 = 5`, `6 − x = 2`, up to 20 |
+| Medium | The same up to 100, and times: `5 × x = 35` (2, 3, 4, 5 and 10) |
+| Hard   | All times tables, division both ways (`x ÷ 4 = 6`, `30 ÷ x = 3`), and two steps (`2 × x + 3 = 11`) |
+
+x is always a whole number, and every equation is built from x outwards so it is always true.
+
 ## How it's built
 
 - `app/src/main/assets/www/index.html` — the whole game (HTML/CSS/JS). New games get an
