@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Count It!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky:#54C6EB; --sky-deep:#2FB1D9; --sun:#FFD166; --coral:#FF6F5E;
+    --leaf:#06D6A0; --ink:#20344A; --cloud:#FFFFFF; --violet:#8B7CF6;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  /* Same single, deliberately bright, high-contrast palette as Spell It! — not a
+     light/dark pair. Text colors are paired with fixed card backgrounds, so the
+     page intentionally does not follow the device's system dark-mode setting. */
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; min-height:100%; font-family:'Nunito', sans-serif;
+    background:linear-gradient(180deg,var(--sky) 0%, var(--sky-deep) 100%);
+    color:var(--ink); display:flex; flex-direction:column; align-items:center; overflow-x:hidden;
+  }
+  .wrap{ width:100%; max-width:480px; padding:16px 18px 20px; display:flex; flex-direction:column; align-items:center; gap:12px; }
+  h1{ font-family:'Baloo 2', sans-serif; color:#fff; font-size:28px; margin:2px 0 0; text-shadow:0 3px 0 rgba(0,0,0,0.12); text-align:center; }
+  .tagline{ color:#fff; opacity:0.9; font-weight:600; margin-top:-10px; text-align:center; font-size:14px; }
+  .hidden{ display:none !important; }
+
+  /* Games screen */
+  .game-list{ width:100%; display:flex; flex-direction:column; gap:16px; margin-top:6px; }
+  .game-card{
+    background:var(--cloud); border:none; border-radius:26px; padding:22px 20px;
+    display:flex; align-items:center; gap:18px; cursor:pointer; text-align:left;
+    box-shadow:0 8px 0 rgba(0,40,60,0.18); width:100%;
+  }
+  .game-card:active{ transform:translateY(4px); box-shadow:0 4px 0 rgba(0,40,60,0.18); }
+  .game-emoji{ font-size:44px; width:60px; text-align:center; }
+  .game-info{ flex:1; }
+  .game-name{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:21px; color:var(--ink); }
+  .game-tagline{ font-size:13px; color:#6B7C8C; font-weight:600; margin-top:3px; }
+
+  /* Language switch (games screen only) */
+  .lang-switch{ display:flex; justify-content:center; margin-top:2px; }
+  .lang-select{
+    border:none; border-radius:999px; padding:9px 34px 9px 18px; font-family:'Baloo 2', sans-serif;
+    font-weight:700; font-size:14px; cursor:pointer; background-color:#fff; color:var(--ink);
+    box-shadow:0 4px 0 rgba(0,40,60,0.18); -webkit-appearance:none; appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2320344A'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat:no-repeat; background-position:right 10px center; background-size:18px;
+  }
+  .lang-select:active{ transform:translateY(2px); box-shadow:0 2px 0 rgba(0,40,60,0.18); }
+
+  /* Levels screen */
+  .screen-back{
+    align-self:flex-start; border:none; background:rgba(255,255,255,0.25); color:#fff; font-family:'Baloo 2', sans-serif;
+    font-weight:700; font-size:14px; padding:8px 14px; border-radius:999px; cursor:pointer;
+  }
+  .level-list{ width:100%; display:flex; flex-direction:column; gap:14px; margin-top:2px; }
+  .level-card{
+    background:var(--cloud); border:none; border-radius:22px; padding:18px 20px;
+    display:flex; align-items:center; gap:16px; cursor:pointer; text-align:left;
+    box-shadow:0 8px 0 rgba(0,40,60,0.18); width:100%;
+  }
+  .level-card:active{ transform:translateY(4px); box-shadow:0 4px 0 rgba(0,40,60,0.18); }
+  .level-emoji{ font-size:38px; width:56px; text-align:center; }
+  .level-info{ flex:1; }
+  .level-name{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:19px; color:var(--ink); }
+  .level-sub{ font-size:13px; color:#6B7C8C; font-weight:600; margin-top:2px; }
+
+  /* Game screen */
+  .top-bar{ width:100%; display:flex; align-items:center; }
+  .back-btn{
+    border:none; background:rgba(255,255,255,0.25); color:#fff; font-family:'Baloo 2', sans-serif;
+    font-weight:700; font-size:14px; padding:8px 14px; border-radius:999px; cursor:pointer;
+  }
+  .stage{ width:100%; background:var(--cloud); border-radius:28px; padding:18px 18px 16px; box-shadow:0 14px 0 rgba(0,40,60,0.18); display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .picture-frame{ width:96px;height:96px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #FFF6DA, var(--sun)); display:flex;align-items:center;justify-content:center; font-size:50px; box-shadow:inset 0 -6px 0 rgba(0,0,0,0.08); user-select:none; }
+  .picture-frame.bump{ animation:bump .5s ease; }
+  @keyframes bump{ 0%{transform:scale(1)} 30%{transform:scale(1.12)} 100%{transform:scale(1)} }
+
+  .say-btn{ border:none; background:var(--sky-deep); color:#fff; font-family:'Baloo 2', sans-serif; font-weight:700; font-size:14px; padding:8px 16px; border-radius:999px; display:flex; align-items:center; gap:8px; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,0.15); }
+  .say-btn:active{ transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,0.15); }
+
+  /* Number Sequence: the row of numbers, ending in a "?" box for the missing one. */
+  .seq-row{ display:flex; justify-content:center; gap:10px; width:100%; padding-bottom:22px; }
+  .seq-cell{ position:relative; flex:1 1 0; max-width:62px; min-width:0; }
+  .seq-num{
+    height:56px; border-radius:14px; border:3px solid #D9E4EC; background:#F5F9FB;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Baloo 2', sans-serif; font-weight:800; font-size:26px; color:var(--ink);
+    user-select:none;
+  }
+  .seq-row.long .seq-num{ font-size:20px; }
+  .seq-num.pop{ animation:bump .45s ease; }
+  .seq-num.missing{ border:3px dashed var(--coral); background:#FFF1EF; color:var(--coral); }
+  .seq-num.missing.filled{ border:3px solid var(--leaf); background:#E7FBF4; color:var(--ink); }
+  /* The step between a number and the one before it, e.g. "+2". Hidden until the
+     child has had a couple of misses, then shown as a gentle hint, centered under
+     the gap between the two boxes. */
+  .seq-step{
+    position:absolute; left:-5px; bottom:-22px; transform:translateX(-50%);
+    font-family:'Baloo 2', sans-serif; font-weight:800; font-size:13px; color:var(--violet);
+    white-space:nowrap; opacity:0; transition:opacity .3s ease;
+  }
+  .seq-row.hint .seq-step{ opacity:1; }
+
+  /* Answer choices — a 3x2 grid so all 6 numbers are visible at once. */
+  .pick-options{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; width:100%; max-width:330px; }
+  .pick-option{
+    border:none; border-radius:16px; padding:12px 6px; width:100%;
+    font-family:'Baloo 2', sans-serif; font-weight:800; font-size:26px; line-height:1.1;
+    cursor:pointer; box-shadow:0 5px 0 rgba(0,0,0,0.18); text-align:center;
+  }
+  .pick-option:active{ transform:translateY(3px); box-shadow:0 2px 0 rgba(0,0,0,0.18); }
+  .pick-option.shake{ animation:shake .4s ease; }
+  @keyframes shake{ 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .pick-option.pc0{ background:var(--coral); color:#fff; }
+  .pick-option.pc1{ background:var(--sky-deep); color:#fff; }
+  .pick-option.pc2{ background:var(--violet); color:#fff; }
+  .pick-option.pc3{ background:var(--sun); color:var(--ink); }
+  .pick-option.correct{ background:var(--leaf); color:#fff; }
+  .pick-option.dim{ opacity:0.4; }
+  .pick-option.locked{ pointer-events:none; }
+
+  .celebrate{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:19px; color:var(--leaf); min-height:22px; text-align:center; }
+  .next-btn{ border:none; color:#fff; font-family:'Baloo 2', sans-serif; font-weight:700; font-size:14px; padding:10px 18px; border-radius:999px; cursor:pointer; box-shadow:0 5px 0 rgba(0,0,0,0.15); display:none; background:var(--leaf); }
+  .next-btn.show{ display:inline-block; }
+  .next-btn:active{ transform:translateY(3px); box-shadow:0 2px 0 rgba(0,0,0,0.15); }
+
+  .confetti{ position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:hidden; z-index:5; }
+  .confetti span{ position:absolute; top:-20px; font-size:20px; animation:fall linear forwards; }
+  @keyframes fall{ to{ transform:translateY(110vh) rotate(360deg); opacity:0.9; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- GAMES SCREEN -->
+  <div id="gamesScreen" style="width:100%; display:flex; flex-direction:column; align-items:center; gap:12px;">
+    <h1 id="gamesTitle">Let's Count! 🎈</h1>
+    <div class="tagline" id="gamesTagline">Choose a game to start</div>
+    <div class="lang-switch" id="langSwitch">
+      <select class="lang-select" id="langSelect">
+        <option value="en">🇬🇧 English</option>
+        <option value="da">🇩🇰 Dansk</option>
+        <option value="fr">🇫🇷 Français</option>
+      </select>
+    </div>
+    <div class="game-list" id="gameList"></div>
+  </div>
+
+  <!-- LEVELS SCREEN -->
+  <div id="levelScreen" class="hidden" style="width:100%; display:flex; flex-direction:column; align-items:center; gap:16px;">
+    <button class="screen-back" id="gamesBackBtn">← Games</button>
+    <h1 id="levelScreenTitle">Number Sequence 🔢</h1>
+    <div class="tagline" id="levelScreenTagline">Pick a level to start counting</div>
+    <div class="level-list" id="levelList"></div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="gameScreen" class="hidden" style="width:100%; display:flex; flex-direction:column; align-items:center; gap:16px;">
+    <div class="top-bar">
+      <button class="back-btn" id="backBtn">← Levels</button>
+    </div>
+    <div class="stage">
+      <div class="picture-frame" id="pictureFrame">🐸</div>
+      <button class="say-btn" id="sayBtn" aria-label="Hear the numbers">🔊 Hear it again</button>
+      <div id="soundHint" class="hidden" style="font-size:12px; color:#6B7C8C; font-weight:600; text-align:center; margin-top:-8px;">No sound? Check your device's volume and text‑to‑speech settings.</div>
+
+      <div id="sequenceArea" style="width:100%; display:flex; flex-direction:column; align-items:center; gap:12px;">
+        <div class="seq-row" id="seqRow"></div>
+        <div class="pick-options" id="seqOptions"></div>
+      </div>
+
+      <div class="celebrate" id="celebrate"></div>
+      <div style="display:flex; gap:10px;">
+        <button class="next-btn" id="nextBtn">Next →</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var SEQ_SHOWN = 4;          // numbers shown before the "?"
+  var OPTION_COUNT = 6;       // answer choices, the correct one included
+  var MISSES_BEFORE_HINT = 2; // wrong taps before the "+2"-style step hints appear
+
+  var LANG_STORAGE_KEY = 'countit_lang';
+  var LANG_TTS_CODE = { en:'en-US', da:'da-DK', fr:'fr-FR' };
+  var lang = 'en';
+  try{
+    var savedLang = localStorage.getItem(LANG_STORAGE_KEY);
+    if(savedLang === 'en' || savedLang === 'da' || savedLang === 'fr') lang = savedLang;
+  }catch(e){}
+
+  // All UI copy, keyed by language.
+  var STRINGS = {
+    en: {
+      gamesTitle: "Let's Count! 🎈",
+      gamesTagline: 'Choose a game to start',
+      backToGames: '← Games',
+      backToLevels: '← Levels',
+      pickLevelPrefix: 'Pick a level to start ',
+      hearItAgain: '🔊 Hear it again',
+      hearAria: 'Hear the numbers',
+      soundHint: "No sound? Check your device's volume and text‑to‑speech settings.",
+      next: 'Next →',
+      soundUnavailable: '🔇 Sound unavailable',
+      whatNext: 'What comes next?',
+      wellDone: '! Well done.',
+      celebrate: ['Great job! 🎉', 'You did it! ⭐', 'Super counter! 🌟', 'Awesome! 🎈']
+    },
+    da: {
+      gamesTitle: 'Lad os tælle! 🎈',
+      gamesTagline: 'Vælg et spil for at starte',
+      backToGames: '← Spil',
+      backToLevels: '← Niveauer',
+      pickLevelPrefix: 'Vælg et niveau for at ',
+      hearItAgain: '🔊 Hør det igen',
+      hearAria: 'Hør tallene',
+      soundHint: 'Ingen lyd? Tjek din enheds lydstyrke og indstillinger for oplæsning.',
+      next: 'Næste →',
+      soundUnavailable: '🔇 Lyd ikke tilgængelig',
+      whatNext: 'Hvad kommer så?',
+      wellDone: '! Flot klaret.',
+      celebrate: ['Flot klaret! 🎉', 'Du gjorde det! ⭐', 'Super tæller! 🌟', 'Fantastisk! 🎈']
+    },
+    fr: {
+      gamesTitle: 'Comptons ! 🎈',
+      gamesTagline: 'Choisis un jeu pour commencer',
+      backToGames: '← Jeux',
+      backToLevels: '← Niveaux',
+      pickLevelPrefix: 'Choisis un niveau pour commencer à ',
+      hearItAgain: '🔊 Réécouter',
+      hearAria: 'Écouter les nombres',
+      soundHint: "Pas de son ? Vérifie le volume et les paramètres de synthèse vocale de ton appareil.",
+      next: 'Suivant →',
+      soundUnavailable: '🔇 Son indisponible',
+      whatNext: 'Quel nombre vient ensuite ?',
+      wellDone: ' ! Bravo.',
+      celebrate: ['Bravo ! 🎉', 'Tu as réussi ! ⭐', 'Super compteur ! 🌟', 'Génial ! 🎈']
+    }
+  };
+
+  // The games list. Only Number Sequence for now; new games get their own entry
+  // here (and their own area on the game screen), the same way Spell It! grew.
+  var GAMES_BY_LANG = {
+    en: [ { id:'sequence', name:'Number Sequence', emoji:'🔢', tagline:'Look at the numbers, then pick the one that comes next' } ],
+    da: [ { id:'sequence', name:'Talrækker', emoji:'🔢', tagline:'Se på tallene, og vælg så det tal, der kommer bagefter' } ],
+    fr: [ { id:'sequence', name:'Suites de nombres', emoji:'🔢', tagline:'Regarde les nombres, puis choisis celui qui vient ensuite' } ]
+  };
+
+  var LEVEL_TAGLINE_VERB_BY_LANG = {
+    en: { sequence:'counting' },
+    da: { sequence:'tælle' },
+    fr: { sequence:'compter' }
+  };
+
+  var LEVELS_BY_LANG = {
+    en: [
+      { id:'easy', name:'Easy', emoji:'🌱', sub:'Count by 1s and 2s, up to 20' },
+      { id:'medium', name:'Medium', emoji:'🌿', sub:'Jumps of 2, 3, 5 and 10, up to 100' },
+      { id:'hard', name:'Hard', emoji:'🌳', sub:'Bigger jumps and tricky patterns' }
+    ],
+    da: [
+      { id:'easy', name:'Nem', emoji:'🌱', sub:'Tæl med 1 og 2, op til 20' },
+      { id:'medium', name:'Mellem', emoji:'🌿', sub:'Spring på 2, 3, 5 og 10, op til 100' },
+      { id:'hard', name:'Svær', emoji:'🌳', sub:'Større spring og snedige mønstre' }
+    ],
+    fr: [
+      { id:'easy', name:'Facile', emoji:'🌱', sub:'Compte de 1 en 1 et de 2 en 2, jusqu’à 20' },
+      { id:'medium', name:'Moyen', emoji:'🌿', sub:'Sauts de 2, 3, 5 et 10, jusqu’à 100' },
+      { id:'hard', name:'Difficile', emoji:'🌳', sub:'Grands sauts et suites plus rusées' }
+    ]
+  };
+
+  // Friendly critters for the round's picture — purely decorative, a new one each round.
+  var BUDDIES = ['🐸','🐢','🐝','🐞','🦊','🐰','🐻','🐼','🐙','🦉','🐧','🐨','🦁','🐵','🦄','🐥'];
+
+  // ---------- Sequence generation ----------
+  // Every round is generated fresh, so a level never runs out and never "finishes".
+  // A puzzle is { shown:[4 numbers], answer, steps:[labels for each gap, e.g. '+2'],
+  // alt: a tempting wrong continuation (used as one of the distractors), jump }.
+
+  function randInt(a, b){ return a + Math.floor(Math.random() * (b - a + 1)); }
+  function choice(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function stepLabel(d){ return d > 0 ? '+' + d : '−' + (-d); }
+
+  function arithmetic(start, step){
+    var terms = [];
+    for(var i = 0; i <= SEQ_SHOWN; i++) terms.push(start + step * i);
+    var labels = [];
+    for(var j = 1; j <= SEQ_SHOWN; j++) labels.push(stepLabel(step));
+    return { shown:terms.slice(0, SEQ_SHOWN), answer:terms[SEQ_SHOWN], steps:labels, alt:terms[SEQ_SHOWN - 1] + (step > 0 ? 1 : -1), jump:Math.abs(step) };
+  }
+
+  function doubling(start){
+    var terms = [start];
+    for(var i = 1; i <= SEQ_SHOWN; i++) terms.push(terms[i-1] * 2);
+    var labels = [];
+    for(var j = 1; j <= SEQ_SHOWN; j++) labels.push('×2');
+    var last = terms[SEQ_SHOWN - 1], prev = terms[SEQ_SHOWN - 2];
+    // The classic slip is to repeat the last gap instead of doubling again.
+    return { shown:terms.slice(0, SEQ_SHOWN), answer:terms[SEQ_SHOWN], steps:labels, alt:last + (last - prev), jump:last };
+  }
+
+  // Each jump is one bigger than the last: 3, 4, 6, 9, 13 (+1, +2, +3, +4).
+  function growing(start){
+    var terms = [start];
+    for(var i = 1; i <= SEQ_SHOWN; i++) terms.push(terms[i-1] + i);
+    var labels = [];
+    for(var j = 1; j <= SEQ_SHOWN; j++) labels.push('+' + j);
+    var last = terms[SEQ_SHOWN - 1];
+    return { shown:terms.slice(0, SEQ_SHOWN), answer:terms[SEQ_SHOWN], steps:labels, alt:last + (SEQ_SHOWN - 1), jump:SEQ_SHOWN };
+  }
+
+  var GENERATORS = {
+    // Up to 20: counting on by 1s (most often), by 2s, and counting back by 1s.
+    easy: function(){
+      var r = Math.random();
+      if(r < 0.45) return arithmetic(randInt(0, 15), 1);
+      if(r < 0.80) return arithmetic(randInt(0, 12), 2);
+      return arithmetic(randInt(5, 20), -1);
+    },
+    // Up to 100: skip-counting by 2, 3, 5 and 10, counting on across a ten
+    // (37, 38, 39, 40…), and counting back by 2, 5 and 10.
+    medium: function(){
+      return choice([
+        function(){ return arithmetic(randInt(2, 9) * 10 - randInt(1, 3), 1); },
+        function(){ return arithmetic(randInt(10, 40), 2); },
+        function(){ return arithmetic(randInt(0, 20), 3); },
+        function(){ return arithmetic(5 * randInt(0, 12), 5); },
+        function(){ return arithmetic(10 * randInt(0, 5), 10); },
+        function(){ return arithmetic(randInt(10, 30), -2); },
+        function(){ return arithmetic(5 * randInt(4, 20), -5); },
+        function(){ return arithmetic(10 * randInt(4, 10), -10); }
+      ])();
+    },
+    // Bigger and less familiar jumps, tens from an "odd" start (13, 23, 33…),
+    // counting back by 3–6, doubling, and jumps that grow by one each time.
+    hard: function(){
+      return choice([
+        function(){ return arithmetic(randInt(0, 30), choice([4, 6, 7, 8, 9])); },
+        function(){ var s = randInt(11, 69); if(s % 10 === 0) s++; return arithmetic(s, 10); },
+        function(){ return arithmetic(25 * randInt(0, 3), 25); },
+        function(){ var st = choice([3, 4, 5, 6]); return arithmetic(st * SEQ_SHOWN + randInt(0, 30), -st); },
+        function(){ return doubling(choice([1, 2, 3, 5])); },
+        function(){ return growing(randInt(1, 12)); }
+      ])();
+    }
+  };
+
+  // Six choices: the answer plus five believable near-misses — one off, the last
+  // number again, one jump too far, the puzzle's own "tempting" wrong rule — then
+  // topped up with random numbers close by if those ever collide.
+  function buildOptions(q){
+    var a = q.answer, last = q.shown[SEQ_SHOWN - 1], d = q.jump;
+    var cands = [a + 1, a - 1, last, a + d, q.alt, a + 2, a - 2];
+    if(d >= 5){ cands.push(a + 10, a - 10); }
+    var picked = [];
+    shuffle(cands).forEach(function(n){
+      if(picked.length < OPTION_COUNT - 1 && n >= 0 && n !== a && picked.indexOf(n) === -1) picked.push(n);
+    });
+    var spread = Math.max(6, d * 2), guard = 0;
+    while(picked.length < OPTION_COUNT - 1 && guard++ < 200){
+      var n = randInt(Math.max(0, a - spread), a + spread);
+      if(n !== a && picked.indexOf(n) === -1) picked.push(n);
+    }
+    return shuffle(picked.concat([a]));
+  }
+
+  function newPuzzle(levelId, previous){
+    var q, guard = 0;
+    do { q = GENERATORS[levelId](); }
+    while(previous && guard++ < 20 && q.shown.join(',') === previous.shown.join(','));
+    q.options = buildOptions(q);
+    return q;
+  }
+
+  // ---------- Speech ----------
+  var currentGame = null, currentLevel = null, puzzle = null, misses = 0, solved = false;
+  // When running inside the Android app shell, window.AndroidTTS is injected by
+  // MainActivity before this page loads, and speech goes through Android's native
+  // TextToSpeech engine instead (Android's WebView does not implement the browser
+  // Web Speech API, so speechSynthesis alone would stay silent there).
+  var hasNativeTTS = !!(window.AndroidTTS && window.AndroidTTS.speak);
+  var speechSupported = hasNativeTTS || ('speechSynthesis' in window);
+  var audioUnlocked = false;
+
+  function unlockAudioOnce(){
+    if(audioUnlocked || !speechSupported || hasNativeTTS) return;
+    audioUnlocked = true;
+    try{
+      var u = new SpeechSynthesisUtterance(' ');
+      u.volume = 1;
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+  document.addEventListener('pointerdown', unlockAudioOnce, { once:true });
+  document.addEventListener('touchstart', unlockAudioOnce, { once:true, passive:true });
+
+  // queue=true appends after whatever is currently speaking instead of cutting it off.
+  function speak(text, queue){
+    if(!speechSupported) return;
+    var ttsLang = LANG_TTS_CODE[lang] || 'en-US';
+    if(hasNativeTTS){
+      try{ window.AndroidTTS.speak(text, !!queue, ttsLang); }catch(e){}
+      return;
+    }
+    try{
+      if(!queue){ window.speechSynthesis.cancel(); }
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.85; u.pitch = 1.1; u.volume = 1;
+      u.lang = ttsLang;
+      var voices = window.speechSynthesis.getVoices();
+      if(voices && voices.length){
+        var langPrefix = ttsLang.split('-')[0].toLowerCase();
+        var matchVoice = voices.find(function(v){ return v.lang && v.lang.toLowerCase().indexOf(langPrefix) === 0; });
+        if(matchVoice) u.voice = matchVoice;
+      }
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
+  function stopSpeech(){
+    try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(e){}
+  }
+
+  function speakPuzzle(){
+    if(!puzzle) return;
+    speak(puzzle.shown.join(', ') + '. ' + STRINGS[lang].whatNext);
+  }
+
+  function shuffle(arr){
+    var a = arr.slice();
+    for(var i = a.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i+1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  // ---------- Screens ----------
+  var gamesScreen = document.getElementById('gamesScreen');
+  var levelScreen = document.getElementById('levelScreen');
+  var gameScreen = document.getElementById('gameScreen');
+  var gamesTitleEl = document.getElementById('gamesTitle');
+  var gamesTaglineEl = document.getElementById('gamesTagline');
+  var langSelectEl = document.getElementById('langSelect');
+  var gameListEl = document.getElementById('gameList');
+  var levelListEl = document.getElementById('levelList');
+  var levelScreenTitle = document.getElementById('levelScreenTitle');
+  var levelScreenTagline = document.getElementById('levelScreenTagline');
+  var pictureFrame = document.getElementById('pictureFrame');
+  var seqRowEl = document.getElementById('seqRow');
+  var seqOptionsEl = document.getElementById('seqOptions');
+  var celebrateEl = document.getElementById('celebrate');
+  var nextBtn = document.getElementById('nextBtn');
+  var backBtn = document.getElementById('backBtn');
+  var gamesBackBtn = document.getElementById('gamesBackBtn');
+  var sayBtn = document.getElementById('sayBtn');
+  var soundHintEl = document.getElementById('soundHint');
+
+  function applyLangStrings(){
+    var strs = STRINGS[lang];
+    document.documentElement.lang = lang;
+    gamesTitleEl.textContent = strs.gamesTitle;
+    gamesTaglineEl.textContent = strs.gamesTagline;
+    gamesBackBtn.textContent = strs.backToGames;
+    backBtn.textContent = strs.backToLevels;
+    soundHintEl.textContent = strs.soundHint;
+    nextBtn.textContent = strs.next;
+    if(speechSupported){
+      sayBtn.textContent = strs.hearItAgain;
+      sayBtn.setAttribute('aria-label', strs.hearAria);
+    } else {
+      sayBtn.textContent = strs.soundUnavailable;
+    }
+    langSelectEl.value = lang;
+    renderGames();
+  }
+
+  function setLang(newLang){
+    if(newLang !== 'en' && newLang !== 'da' && newLang !== 'fr') return;
+    if(newLang === lang) return;
+    lang = newLang;
+    try{ localStorage.setItem(LANG_STORAGE_KEY, lang); }catch(e){}
+    applyLangStrings();
+  }
+
+  function renderGames(){
+    gameListEl.innerHTML = '';
+    GAMES_BY_LANG[lang].forEach(function(g){
+      var btn = document.createElement('button');
+      btn.className = 'game-card';
+      btn.innerHTML =
+        '<div class="game-emoji">' + g.emoji + '</div>' +
+        '<div class="game-info">' +
+          '<div class="game-name">' + g.name + '</div>' +
+          '<div class="game-tagline">' + g.tagline + '</div>' +
+        '</div>';
+      btn.addEventListener('click', function(){ openGame(g); });
+      gameListEl.appendChild(btn);
+    });
+  }
+
+  function openGame(g){
+    currentGame = g;
+    levelScreenTitle.textContent = g.name + ' ' + g.emoji;
+    levelScreenTagline.textContent = STRINGS[lang].pickLevelPrefix + (LEVEL_TAGLINE_VERB_BY_LANG[lang][g.id] || '');
+    gamesScreen.classList.add('hidden');
+    levelScreen.classList.remove('hidden');
+    renderLevels();
+  }
+
+  function renderLevels(){
+    levelListEl.innerHTML = '';
+    LEVELS_BY_LANG[lang].forEach(function(lv){
+      var btn = document.createElement('button');
+      btn.className = 'level-card level-' + lv.id;
+      btn.innerHTML =
+        '<div class="level-emoji">' + lv.emoji + '</div>' +
+        '<div class="level-info">' +
+          '<div class="level-name">' + lv.name + '</div>' +
+          '<div class="level-sub">' + lv.sub + '</div>' +
+        '</div>';
+      btn.addEventListener('click', function(){ startLevel(lv); });
+      levelListEl.appendChild(btn);
+    });
+  }
+
+  function startLevel(lv){
+    currentLevel = lv;
+    puzzle = null;
+    levelScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+    loadRound();
+  }
+
+  function goLevels(){
+    stopSpeech();
+    gameScreen.classList.add('hidden');
+    levelScreen.classList.remove('hidden');
+    renderLevels();
+  }
+
+  function goGames(){
+    stopSpeech();
+    levelScreen.classList.add('hidden');
+    gamesScreen.classList.remove('hidden');
+    renderGames();
+  }
+
+  // ---------- Number Sequence round ----------
+  function loadRound(){
+    puzzle = newPuzzle(currentLevel.id, puzzle);
+    misses = 0;
+    solved = false;
+    celebrateEl.textContent = '';
+    nextBtn.classList.remove('show');
+
+    var buddy = pictureFrame.textContent, guard = 0;
+    while(buddy === pictureFrame.textContent && guard++ < 10) buddy = choice(BUDDIES);
+    pictureFrame.textContent = buddy;
+    pictureFrame.classList.remove('bump');
+    void pictureFrame.offsetWidth;
+    pictureFrame.classList.add('bump');
+
+    renderSequence(puzzle);
+    renderOptions(puzzle);
+    speakPuzzle();
+  }
+
+  function renderSequence(q){
+    seqRowEl.innerHTML = '';
+    seqRowEl.classList.remove('hint');
+    var longest = Math.max.apply(null, q.shown.concat([q.answer]).map(function(n){ return String(n).length; }));
+    seqRowEl.classList.toggle('long', longest >= 3);
+
+    var cells = q.shown.concat(['?']);
+    cells.forEach(function(val, i){
+      var cell = document.createElement('div');
+      cell.className = 'seq-cell';
+      var box = document.createElement('div');
+      box.className = 'seq-num' + (val === '?' ? ' missing' : '');
+      box.textContent = val;
+      cell.appendChild(box);
+      // The hint under the last gap would give the answer away on its own, so
+      // it only ever labels the gaps between numbers the child can already see.
+      if(i > 0 && i < cells.length - 1){
+        var step = document.createElement('div');
+        step.className = 'seq-step';
+        step.textContent = q.steps[i - 1];
+        cell.appendChild(step);
+      }
+      seqRowEl.appendChild(cell);
+    });
+  }
+
+  function renderOptions(q){
+    seqOptionsEl.innerHTML = '';
+    q.options.forEach(function(n, i){
+      var btn = document.createElement('button');
+      btn.className = 'pick-option pc' + (i % 4);
+      btn.textContent = n;
+      btn.addEventListener('click', function(){ handlePick(n, btn); });
+      seqOptionsEl.appendChild(btn);
+    });
+  }
+
+  function handlePick(n, btn){
+    if(solved) return;
+    if(n === puzzle.answer){
+      solved = true;
+      btn.classList.add('correct');
+      Array.prototype.forEach.call(seqOptionsEl.children, function(optBtn){
+        optBtn.classList.add('locked');
+        if(optBtn !== btn) optBtn.classList.add('dim');
+      });
+      var missing = seqRowEl.querySelector('.seq-num.missing');
+      if(missing){
+        missing.textContent = n;
+        missing.classList.add('filled', 'pop');
+      }
+      onRoundComplete();
+    } else {
+      // Say the wrongly-tapped number, so the child hears what they picked.
+      speak(String(n));
+      btn.classList.remove('shake');
+      void btn.offsetWidth;
+      btn.classList.add('shake');
+      misses++;
+      if(misses >= MISSES_BEFORE_HINT) seqRowEl.classList.add('hint');
+    }
+  }
+
+  function onRoundComplete(){
+    var strs = STRINGS[lang];
+    var msgs = strs.celebrate;
+    celebrateEl.textContent = msgs[Math.floor(Math.random() * msgs.length)];
+    speak(puzzle.answer + strs.wellDone);
+    launchConfetti();
+    nextBtn.classList.add('show');
+  }
+
+  function launchConfetti(){
+    var layer = document.createElement('div');
+    layer.className = 'confetti';
+    var emojis = ['🎉','⭐','🎈','✨'];
+    for(var i = 0; i < 16; i++){
+      var s = document.createElement('span');
+      s.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+      s.style.left = (Math.random()*100) + '%';
+      s.style.animationDuration = (1.6 + Math.random()*1.2) + 's';
+      s.style.fontSize = (16 + Math.random()*14) + 'px';
+      layer.appendChild(s);
+    }
+    document.body.appendChild(layer);
+    setTimeout(function(){ layer.remove(); }, 3000);
+  }
+
+  if(speechSupported){
+    soundHintEl.classList.remove('hidden');
+  } else {
+    sayBtn.disabled = true;
+  }
+
+  sayBtn.addEventListener('click', function(){
+    unlockAudioOnce();
+    speakPuzzle();
+  });
+  nextBtn.addEventListener('click', loadRound);
+  backBtn.addEventListener('click', goLevels);
+  gamesBackBtn.addEventListener('click', goGames);
+  langSelectEl.addEventListener('change', function(){ setLang(this.value); });
+
+  // Exposed only so the generator can be exercised from tests; not used by the page.
+  window.__countIt = { newPuzzle:newPuzzle };
+
+  applyLangStrings();
+})();
+</script>
+</body>
+</html>

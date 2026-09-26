@@ -1,0 +1,57 @@
+# Count It! — Android app
+
+A number game for young kids, the sister app to **Spell It!** — same bright look, same
+Easy / Medium / Hard levels, same English / Dansk / Français switch, and the numbers are
+read aloud.
+
+## Games
+
+### 🔢 Number Sequence
+
+Four numbers are shown, followed by a **?**. The child picks the number that comes next from
+six choices. The numbers are read aloud ("2, 4, 6, 8. What comes next?"), a wrong tap shakes
+and says the number that was tapped, and after two misses little step hints (`+2`, `−1`, `×2`…)
+appear between the numbers. A right answer fills the **?**, cheers, and shows **Next →**.
+
+Every round is generated fresh, so a level never runs out:
+
+| Level  | What comes up |
+|--------|---------------|
+| Easy   | Counting on by 1s and 2s, counting back by 1s — numbers up to 20 |
+| Medium | Jumps of 2, 3, 5 and 10, counting on across a ten (37, 38, 39, 40…), counting back by 2, 5 and 10 — up to 100 |
+| Hard   | Jumps of 4 and 6–9, tens from an odd start (13, 23, 33…), 25s, counting back by 3–6, doubling (3, 6, 12, 24…), and jumps that grow by one (1, 2, 4, 7…) |
+
+The five wrong choices are believable near-misses (one off, the last number again, one jump
+too far, the "wrong rule" continuation) so the child has to look at the pattern, not guess.
+
+## How it's built
+
+- `app/src/main/assets/www/index.html` — the whole game (HTML/CSS/JS). New games get an
+  entry in `GAMES_BY_LANG` and their own area on the game screen.
+- `MainActivity.kt` — loads that page in a full-screen `WebView` and injects a small
+  JavaScript bridge (`window.AndroidTTS`) backed by Android's native `TextToSpeech` engine,
+  exactly as in Spell It!. Opened in a desktop browser, the page falls back to the browser's
+  own speech.
+
+## Getting the APK
+
+Every push to `main` runs `.github/workflows/android-build.yml`, which builds a debug APK and
+attaches it to a new GitHub Release. Grab `app-debug.apk` from the repo's **Releases** page,
+or from the workflow run's **Artifacts** under the **Actions** tab.
+
+## Installing on a phone
+
+1. Download `app-debug.apk` onto the phone.
+2. Open it; Android will ask to allow installing from this source the first time.
+3. Install and open — no internet needed to play (it only loads the Baloo 2 / Nunito
+   webfonts when online, and falls back to the system font otherwise).
+
+## Building locally
+
+Open the folder in Android Studio and click Run, or with the Android SDK installed:
+
+```
+./gradlew assembleDebug
+```
+
+The APK lands at `app/build/outputs/apk/debug/app-debug.apk`.
